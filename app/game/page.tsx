@@ -14,6 +14,7 @@ export default function GamePage() {
   const [results, setResults] = useState<GameResult[]>([]);
   const [transitioning, setTransitioning] = useState(false);
   const [visible, setVisible] = useState(true);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   const scene = scenes[sceneIndex];
   const progress = ((sceneIndex + (phase === "feedback" ? 1 : 0)) / scenes.length) * 100;
@@ -96,6 +97,16 @@ export default function GamePage() {
       className="min-h-screen flex flex-col items-center py-6 px-4"
       style={{ backgroundColor: scene.color.light }}
     >
+      {/* Header */}
+      <div className="w-full max-w-lg flex items-center justify-between mb-2">
+        <button
+          onClick={() => setShowExitModal(true)}
+          className="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1"
+        >
+          ← 처음으로
+        </button>
+      </div>
+
       {/* Progress bar */}
       <div className="w-full max-w-lg mb-4">
         <div className="flex justify-between items-center mb-1">
@@ -171,6 +182,12 @@ export default function GamePage() {
           {/* Choices Phase */}
           {phase === "choices" && (
             <div className="animate-fade-in">
+              <button
+                onClick={() => setPhase("story")}
+                className="text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1 mb-3"
+              >
+                ← 내용 다시 보기
+              </button>
               <p
                 className="font-bold text-base mb-5 text-center px-2"
                 style={{ color: scene.color.text }}
@@ -277,6 +294,32 @@ export default function GamePage() {
           )}
         </div>
       </div>
+
+      {/* Exit modal */}
+      {showExitModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <p className="font-bold text-lg text-gray-800 mb-2">게임을 나가시겠어요?</p>
+            <p className="text-sm text-gray-500 mb-5">
+              진행상황은 저장되어 있어요. 나중에 이어할 수 있습니다.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowExitModal(false)}
+                className="flex-1 border-2 border-gray-200 rounded-xl py-3 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                계속하기
+              </button>
+              <button
+                onClick={() => router.push("/")}
+                className="flex-1 bg-indigo-600 text-white rounded-xl py-3 text-sm font-medium hover:bg-indigo-700"
+              >
+                나가기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Part dots */}
       <div className="flex gap-2 mt-5">
