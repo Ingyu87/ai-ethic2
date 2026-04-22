@@ -1,0 +1,301 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { scenes, GameResult } from "@/data/scenes";
+
+type GamePhase = "story" | "choices" | "feedback";
+
+export default function GamePage() {
+  const router = useRouter();
+  const [sceneIndex, setSceneIndex] = useState(0);
+  const [phase, setPhase] = useState<GamePhase>("story");
+  const [selectedChoice, setSelectedChoice] = useState<"A" | "B" | null>(null);
+  const [results, setResults] = useState<GameResult[]>([]);
+  const [transitioning, setTransitioning] = useState(false);
+  const [visible, setVisible] = useState(true);
+
+  const scene = scenes[sceneIndex];
+  const progress = ((sceneIndex + (phase === "feedback" ? 1 : 0)) / scenes.length) * 100;
+
+  // 마운트 시 저장된 진행상황 복원
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("gameProgress");
+      if (saved) {
+        const { sceneIndex, phase, selectedChoice, results } = JSON.parse(saved);
+        setSceneIndex(sceneIndex);
+        setPhase(phase);
+        setSelectedChoice(selectedChoice);
+        setResults(results);
+      }
+    }
+  }, []);
+
+  // 상태 변경 시 진행상황 저장
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        "gameProgress",
+        JSON.stringify({ sceneIndex, phase, selectedChoice, results })
+      );
+    }
+  }, [sceneIndex, phase, selectedChoice, results]);
+
+  useEffect(() => {
+    setVisible(true);
+  }, [sceneIndex, phase]);
+
+  const handleChoiceSelect = (choiceId: "A" | "B") => {
+    if (transitioning) return;
+    setSelectedChoice(choiceId);
+    setPhase("feedback");
+
+    const choice = scene.choices.find((c) => c.id === choiceId)!;
+    const newResult: GameResult = {
+      sceneId: scene.id,
+      part: scene.part,
+      principle: scene.principle,
+      emoji: scene.emoji,
+      selectedChoice: choiceId,
+      isCorrect: choice.isCorrect,
+      lesson: choice.lesson,
+    };
+    setResults((prev) => [...prev, newResult]);
+  };
+
+  const handleNext = () => {
+    if (transitioning) return;
+    setTransitioning(true);
+    setVisible(false);
+
+    setTimeout(() => {
+      if (sceneIndex < scenes.length - 1) {
+        setSceneIndex((prev) => prev + 1);
+        setPhase("story");
+        setSelectedChoice(null);
+      } else {
+        const allResults = [...results];
+        if (typeof window !== "undefined") {
+          localStorage.setItem("gameResults", JSON.stringify(allResults));
+          localStorage.removeItem("gameProgress");
+        }
+        router.push("/report");
+        return;
+      }
+      setTransitioning(false);
+    }, 350);
+  };
+
+  const selectedChoiceData = selectedChoice
+    ? scene.choices.find((c) => c.id === selectedChoice)
+    : null;
+
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center py-6 px-4"
+      style={{ backgroundColor: scene.color.light }}
+    >
+      {/* Progress bar */}
+      <div className="w-full max-w-lg mb-4">
+        <div className="flex justify-between items-center mb-1">
+          <span className="text-sm font-bold" style={{ color: scene.color.text }}>
+            {scene.part}
+          </span>
+          <span className="text-sm text-gray-500">
+            {sceneIndex + 1} / {scenes.length}장면
+          </span>
+        </div>
+        <div className="w-full h-3 bg-white rounded-full shadow-inner overflow-hidden border border-gray-100">
+          <div
+            className="h-full rounded-full transition-all duration-700"
+            style={{
+              width: `${progress}%`,
+              backgroundColor: scene.color.primary,
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Scene card */}
+      <div
+        className="w-full max-w-lg bg-white rounded-2xl shadow-lg overflow-hidden"
+        style={{
+          opacity: visible ? 1 : 0,
+          transform: visible ? "translateY(0)" : "translateY(16px)",
+          transition: "opacity 0.35s ease, transform 0.35s ease",
+        }}
+      >
+        {/* Header */}
+        <div
+          className="px-6 py-4 text-white"
+          style={{ backgroundColor: scene.color.primary }}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">{scene.emoji}</span>
+            <div>
+              <div className="text-sm font-semibold opacity-90">{scene.part}</div>
+              <div className="text-lg font-black">{scene.principle}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          {/* Story Phase */}
+          {phase === "story" && (
+            <div className="animate-fade-in">
+              <div className="space-y-4 mb-6">
+                {scene.situation.map((text, i) => (
+                  <p key={i} className="text-gray-700 text-base leading-relaxed">
+                    {text}
+                  </p>
+                ))}
+              </div>
+              <button
+                onClick={() => setPhase("choices")}
+                className="w-full text-white font-bold py-4 rounded-xl text-base transition-all active:scale-95 shadow"
+                style={{ backgroundColor: scene.color.primary }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.filter = "brightness(0.9)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.filter = "brightness(1)")
+                }
+              >
+                선택하러 가기 →
+              </button>
+            </div>
+          )}
+
+          {/* Choices Phase */}
+          {phase === "choices" && (
+            <div className="animate-fade-in">
+              <p
+                className="font-bold text-base mb-5 text-center px-2"
+                style={{ color: scene.color.text }}
+              >
+                💬 {scene.question}
+              </p>
+              <div className="space-y-3">
+                {scene.choices.map((choice) => (
+                  <button
+                    key={choice.id}
+                    onClick={() => handleChoiceSelect(choice.id)}
+                    className="w-full text-left bg-white border-2 rounded-xl px-5 py-4 transition-all active:scale-95 hover:shadow-md"
+                    style={{ borderColor: scene.color.border }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = scene.color.primary;
+                      e.currentTarget.style.backgroundColor = scene.color.light;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = scene.color.border;
+                      e.currentTarget.style.backgroundColor = "white";
+                    }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span
+                        className="text-sm font-black w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-white mt-0.5"
+                        style={{ backgroundColor: scene.color.primary }}
+                      >
+                        {choice.id}
+                      </span>
+                      <span className="text-gray-800 text-sm leading-relaxed">
+                        {choice.text}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Feedback Phase */}
+          {phase === "feedback" && selectedChoiceData && (
+            <div className="animate-fade-in">
+              {/* Result badge */}
+              <div
+                className={`rounded-xl p-4 mb-4 border-2 ${
+                  selectedChoiceData.isCorrect
+                    ? "bg-green-50 border-green-200"
+                    : "bg-red-50 border-red-200"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-2xl">
+                    {selectedChoiceData.isCorrect ? "✅" : "❌"}
+                  </span>
+                  <span
+                    className={`font-black text-lg ${
+                      selectedChoiceData.isCorrect
+                        ? "text-green-700"
+                        : "text-red-700"
+                    }`}
+                  >
+                    {selectedChoiceData.isCorrect
+                      ? "정답이에요!"
+                      : "아쉬워요!"}
+                  </span>
+                </div>
+                <p className="text-gray-700 text-sm leading-relaxed">
+                  {selectedChoiceData.feedback}
+                </p>
+              </div>
+
+              {/* Lesson */}
+              <div
+                className="rounded-xl p-4 mb-5"
+                style={{
+                  backgroundColor: scene.color.light,
+                  borderLeft: `4px solid ${scene.color.primary}`,
+                }}
+              >
+                <p className="text-xs font-black mb-1" style={{ color: scene.color.text }}>
+                  💡 핵심 배움
+                </p>
+                <p className="text-sm font-semibold text-gray-800 leading-relaxed">
+                  {selectedChoiceData.lesson}
+                </p>
+              </div>
+
+              <button
+                onClick={handleNext}
+                className="w-full text-white font-bold py-4 rounded-xl text-base transition-all active:scale-95 shadow"
+                style={{ backgroundColor: scene.color.primary }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.filter = "brightness(0.9)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.filter = "brightness(1)")
+                }
+              >
+                {sceneIndex < scenes.length - 1
+                  ? "다음 장면으로 →"
+                  : "🎉 결과 리포트 보기!"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Part dots */}
+      <div className="flex gap-2 mt-5">
+        {scenes.map((s, i) => (
+          <div
+            key={i}
+            className="w-2.5 h-2.5 rounded-full transition-all"
+            style={{
+              backgroundColor:
+                i < sceneIndex
+                  ? "#22C55E"
+                  : i === sceneIndex
+                    ? scene.color.primary
+                    : "#D1D5DB",
+              transform: i === sceneIndex ? "scale(1.3)" : "scale(1)",
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
