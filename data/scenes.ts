@@ -30,6 +30,7 @@ export type GameResult = {
   selectedChoice: "A" | "B";
   isCorrect: boolean;
   lesson: string;
+  stars: number;
 };
 
 export const scenes: Scene[] = [

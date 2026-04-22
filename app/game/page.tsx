@@ -15,6 +15,11 @@ export default function GamePage() {
   const [transitioning, setTransitioning] = useState(false);
   const [visible, setVisible] = useState(true);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [showStreakBadge, setShowStreakBadge] = useState(false);
+  const [resultFlash, setResultFlash] = useState<"correct" | "wrong" | null>(null);
+  const [choiceStartTime, setChoiceStartTime] = useState(0);
+  const [elapsedSec, setElapsedSec] = useState(0);
 
   const scene = scenes[sceneIndex];
   const progress = ((sceneIndex + (phase === "feedback" ? 1 : 0)) / scenes.length) * 100;
@@ -45,14 +50,33 @@ export default function GamePage() {
 
   useEffect(() => {
     setVisible(true);
+    if (phase === "choices") setChoiceStartTime(Date.now());
   }, [sceneIndex, phase]);
 
   const handleChoiceSelect = (choiceId: "A" | "B") => {
     if (transitioning) return;
-    setSelectedChoice(choiceId);
-    setPhase("feedback");
+    const elapsed = Math.round((Date.now() - choiceStartTime) / 1000);
+    setElapsedSec(elapsed);
 
     const choice = scene.choices.find((c) => c.id === choiceId)!;
+    const stars = choice.isCorrect ? 3 : 1;
+
+    if (choice.isCorrect) {
+      const newStreak = streak + 1;
+      setStreak(newStreak);
+      if (newStreak >= 3) {
+        setShowStreakBadge(true);
+        setTimeout(() => setShowStreakBadge(false), 2000);
+      }
+    } else {
+      setStreak(0);
+    }
+
+    setResultFlash(choice.isCorrect ? "correct" : "wrong");
+    setTimeout(() => setResultFlash(null), 400);
+
+    setSelectedChoice(choiceId);
+    setPhase("feedback");
     const newResult: GameResult = {
       sceneId: scene.id,
       part: scene.part,
@@ -61,6 +85,7 @@ export default function GamePage() {
       selectedChoice: choiceId,
       isCorrect: choice.isCorrect,
       lesson: choice.lesson,
+      stars,
     };
     setResults((prev) => [...prev, newResult]);
   };
@@ -97,6 +122,25 @@ export default function GamePage() {
       className="min-h-screen flex flex-col items-center py-6 px-4"
       style={{ backgroundColor: scene.color.light }}
     >
+      {/* Flash overlay */}
+      {resultFlash && (
+        <div
+          className="fixed inset-0 pointer-events-none z-40"
+          style={{
+            backgroundColor: resultFlash === "correct" ? "rgba(34,197,94,0.18)" : "rgba(239,68,68,0.18)",
+            animation: "flashFade 0.4s ease-out forwards",
+          }}
+        />
+      )}
+      <style>{`@keyframes flashFade { from { opacity:1 } to { opacity:0 } }`}</style>
+
+      {/* Streak badge */}
+      {showStreakBadge && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-orange-500 text-white px-5 py-2 rounded-full font-black text-lg shadow-lg animate-bounce">
+          🔥 {streak}연속 정답!
+        </div>
+      )}
+
       {/* Header */}
       <div className="w-full max-w-lg flex items-center justify-between mb-2">
         <button
@@ -257,6 +301,16 @@ export default function GamePage() {
                 <p className="text-gray-700 text-sm leading-relaxed">
                   {selectedChoiceData.feedback}
                 </p>
+              </div>
+
+              {/* Stars + elapsed time */}
+              <div className="flex items-center justify-between mb-3 px-1">
+                <div className="text-xl">
+                  {selectedChoiceData.isCorrect ? "⭐⭐⭐" : "⭐"}
+                </div>
+                <div className="text-xs text-gray-400">
+                  ⏱ {elapsedSec}초 만에 선택
+                </div>
               </div>
 
               {/* Lesson */}

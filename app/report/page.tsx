@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { GameResult } from "@/data/scenes";
 
 const GRADE_CONFIG = [
-  { min: 6, label: "AI 윤리 마스터", emoji: "🏆", color: "#F59E0B", message: "완벽해요! 당신은 진정한 AI 윤리 전문가예요!" },
-  { min: 5, label: "AI 윤리 전문가", emoji: "⭐", color: "#8B5CF6", message: "훌륭해요! 거의 다 맞혔어요. AI를 정말 잘 알고 있어요!" },
-  { min: 4, label: "AI 윤리 수련생", emoji: "🌟", color: "#3B82F6", message: "잘했어요! 조금 더 연습하면 마스터가 될 수 있어요!" },
-  { min: 3, label: "AI 윤리 탐험가", emoji: "🌱", color: "#10B981", message: "좋아요! 배운 내용을 다시 한 번 복습해봐요!" },
-  { min: 0, label: "AI 윤리 도전자", emoji: "💪", color: "#EC4899", message: "다시 도전해봐요! AI 윤리는 꼭 알아야 해요!" },
+  { min: 12, label: "AI 윤리 마스터", emoji: "🏆", color: "#F59E0B", message: "완벽해요! 진정한 AI 윤리 전문가예요!" },
+  { min: 10, label: "AI 윤리 전문가", emoji: "⭐", color: "#8B5CF6", message: "훌륭해요! AI를 정말 잘 알고 있어요!" },
+  { min: 8,  label: "AI 윤리 수련생", emoji: "🌟", color: "#3B82F6", message: "잘했어요! 조금 더 연습하면 마스터가 될 수 있어요!" },
+  { min: 5,  label: "AI 윤리 탐험가", emoji: "🌱", color: "#10B981", message: "좋아요! 배운 내용을 다시 한 번 복습해봐요!" },
+  { min: 0,  label: "AI 윤리 도전자", emoji: "💪", color: "#EC4899", message: "다시 도전해봐요! AI 윤리는 꼭 알아야 해요!" },
 ];
 
 const SCENE_COLORS = [
@@ -46,6 +46,18 @@ export default function ReportPage() {
   const correctCount = results.filter((r) => r.isCorrect).length;
   const gradeConfig =
     GRADE_CONFIG.find((g) => correctCount >= g.min) || GRADE_CONFIG[4];
+
+  const [displayScore, setDisplayScore] = useState(0);
+  useEffect(() => {
+    if (correctCount === 0) return;
+    let c = 0;
+    const t = setInterval(() => {
+      c++;
+      setDisplayScore(c);
+      if (c >= correctCount) clearInterval(t);
+    }, 100);
+    return () => clearInterval(t);
+  }, [correctCount]);
 
   const handleDownload = async () => {
     if (!reportRef.current || downloading) return;
@@ -89,7 +101,7 @@ export default function ReportPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 py-8 px-4">
-      <div className="max-w-lg mx-auto">
+      <div className="max-w-2xl mx-auto">
         {/* Celebration header */}
         <div className="text-center mb-6">
           <div className="text-6xl mb-2">🎉</div>
@@ -97,7 +109,7 @@ export default function ReportPage() {
             탐험 완료!
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            6부의 여정을 모두 마쳤어요
+            {results.length}개의 장면을 모두 마쳤어요
           </p>
         </div>
 
@@ -141,9 +153,9 @@ export default function ReportPage() {
                 style={{ borderLeft: "1px solid rgba(255,255,255,0.4)" }}
               >
                 <div style={{ fontSize: 28, fontWeight: 900 }}>
-                  {correctCount}
+                  {displayScore}
                 </div>
-                <div style={{ fontSize: 11, opacity: 0.9 }}>/ 6 정답</div>
+                <div style={{ fontSize: 11, opacity: 0.9 }}>/ {results.length} 정답</div>
               </div>
             </div>
             <p
@@ -159,7 +171,7 @@ export default function ReportPage() {
             <div style={{ fontSize: 12, fontWeight: 700, color: "#6B7280", marginBottom: 8, paddingLeft: 4 }}>
               📋 부별 결과
             </div>
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {results.map((result, i) => (
                 <div
                   key={result.sceneId}
@@ -167,12 +179,13 @@ export default function ReportPage() {
                   style={{
                     backgroundColor: result.isCorrect ? "#F0FDF4" : "#FFF1F2",
                     border: `1px solid ${result.isCorrect ? "#BBF7D0" : "#FECDD3"}`,
+                    borderLeft: `4px solid ${result.isCorrect ? "#22C55E" : "#EF4444"}`,
                   }}
                 >
                   {/* Part badge */}
                   <div
                     className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-black"
-                    style={{ backgroundColor: SCENE_COLORS[i] }}
+                    style={{ backgroundColor: SCENE_COLORS[i % SCENE_COLORS.length] }}
                   >
                     {result.part.replace("부", "")}
                   </div>
@@ -187,6 +200,9 @@ export default function ReportPage() {
                     <p style={{ fontSize: 11, color: "#6B7280", lineHeight: 1.4 }}>
                       {result.lesson}
                     </p>
+                    <div style={{ fontSize: 11, marginTop: 2 }}>
+                      {Array(result.stars ?? 1).fill("⭐").join("")}
+                    </div>
                   </div>
 
                   {/* Result icon */}
@@ -203,19 +219,19 @@ export default function ReportPage() {
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: "#22C55E" }}>
-                  {correctCount}
+                  {displayScore}
                 </div>
                 <div style={{ fontSize: 11, color: "#6B7280" }}>정답</div>
               </div>
               <div style={{ borderLeft: "1px solid #E5E7EB", borderRight: "1px solid #E5E7EB" }}>
                 <div style={{ fontSize: 22, fontWeight: 900, color: "#EF4444" }}>
-                  {results.length - correctCount}
+                  {results.length - displayScore}
                 </div>
                 <div style={{ fontSize: 11, color: "#6B7280" }}>오답</div>
               </div>
               <div>
                 <div style={{ fontSize: 22, fontWeight: 900, color: "#4F46E5" }}>
-                  {Math.round((correctCount / results.length) * 100)}%
+                  {Math.round((displayScore / results.length) * 100)}%
                 </div>
                 <div style={{ fontSize: 11, color: "#6B7280" }}>정답률</div>
               </div>

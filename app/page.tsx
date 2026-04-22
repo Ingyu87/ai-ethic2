@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const PRINCIPLES = [
@@ -15,7 +15,14 @@ const PRINCIPLES = [
 export default function StartPage() {
   const [name, setName] = useState("");
   const [grade, setGrade] = useState("5학년");
+  const [hasSaved, setHasSaved] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setHasSaved(!!localStorage.getItem("gameProgress"));
+    }
+  }, []);
 
   const handleStart = () => {
     if (typeof window !== "undefined") {
@@ -100,9 +107,18 @@ export default function StartPage() {
             </div>
           </div>
 
+          {hasSaved && (
+            <button
+              onClick={() => router.push("/game")}
+              className="mt-5 w-full border-2 border-indigo-400 text-indigo-600 font-bold py-3 rounded-xl text-base transition-all hover:bg-indigo-50 active:scale-95"
+            >
+              ▶ 이어서 탐험하기
+            </button>
+          )}
+
           <button
             onClick={handleStart}
-            className="mt-5 w-full text-white font-black py-4 rounded-xl text-xl transition-all shadow-md active:scale-95"
+            className="mt-3 w-full text-white font-black py-4 rounded-xl text-xl transition-all shadow-md active:scale-95"
             style={{ backgroundColor: "#4F46E5" }}
             onMouseEnter={(e) =>
               (e.currentTarget.style.backgroundColor = "#4338CA")
@@ -116,7 +132,7 @@ export default function StartPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          총 6부 · 예상 소요 시간: 약 10분
+          총 13장면 · 예상 소요 시간: 약 15분
         </p>
       </div>
     </div>
