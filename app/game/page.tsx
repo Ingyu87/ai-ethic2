@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { scenes, GameResult } from "@/data/scenes";
+import { ETHICS_GUIDE_STORAGE_KEY } from "@/data/ethicsGuide";
 
 type GamePhase = "story" | "choices" | "feedback";
 
@@ -23,6 +24,15 @@ export default function GamePage() {
 
   const scene = scenes[sceneIndex];
   const progress = ((sceneIndex + (phase === "feedback" ? 1 : 0)) / scenes.length) * 100;
+
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      sessionStorage.getItem(ETHICS_GUIDE_STORAGE_KEY) !== "true"
+    ) {
+      router.replace("/");
+    }
+  }, [router]);
 
   // 마운트 시 저장된 진행상황 복원
   useEffect(() => {

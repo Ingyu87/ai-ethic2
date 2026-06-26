@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import EthicsGuideGate from "@/components/EthicsGuideGate";
+import { ETHICS_GUIDE_STORAGE_KEY } from "@/data/ethicsGuide";
 
 const PRINCIPLES = [
   { emoji: "🤖", text: "AI와의 약속", color: "#3B82F6" },
@@ -12,27 +14,62 @@ const PRINCIPLES = [
   { emoji: "💎", text: "투명성", color: "#14B8A6" },
 ];
 
+type GateMode = "entry" | "review" | "newGame";
+
 export default function StartPage() {
   const [name, setName] = useState("");
   const [grade, setGrade] = useState("5학년");
   const [hasSaved, setHasSaved] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
+  const [gateMode, setGateMode] = useState<GateMode>("entry");
   const router = useRouter();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setHasSaved(!!localStorage.getItem("gameProgress"));
+      sessionStorage.removeItem(ETHICS_GUIDE_STORAGE_KEY);
+      setShowGuide(true);
+      setGateMode("entry");
     }
   }, []);
 
-  const handleStart = () => {
+  const handleGuideAccept = () => {
     if (typeof window !== "undefined") {
+      sessionStorage.setItem(ETHICS_GUIDE_STORAGE_KEY, "true");
+    }
+
+    if (gateMode === "newGame") {
       localStorage.setItem("playerName", name.trim() || "탐험가");
       localStorage.setItem("playerGrade", grade);
       localStorage.removeItem("gameResults");
       localStorage.removeItem("gameProgress");
+      router.push("/game");
+      return;
     }
+
+    setShowGuide(false);
+  };
+
+  const handleStart = () => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem(ETHICS_GUIDE_STORAGE_KEY);
+    }
+    setGateMode("newGame");
+    setShowGuide(true);
+  };
+
+  const handleReviewGuide = () => {
+    setGateMode("review");
+    setShowGuide(true);
+  };
+
+  const handleContinue = () => {
     router.push("/game");
   };
+
+  if (showGuide) {
+    return <EthicsGuideGate onAccept={handleGuideAccept} />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-50 to-blue-100 flex items-center justify-center p-4">
@@ -109,7 +146,7 @@ export default function StartPage() {
 
           {hasSaved && (
             <button
-              onClick={() => router.push("/game")}
+              onClick={handleContinue}
               className="mt-5 w-full border-2 border-indigo-400 text-indigo-600 font-bold py-3 rounded-xl text-base transition-all hover:bg-indigo-50 active:scale-95"
             >
               ▶ 이어서 탐험하기
@@ -130,6 +167,14 @@ export default function StartPage() {
             🚀 탐험 시작하기!
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={handleReviewGuide}
+          className="mt-4 w-full text-center text-sm font-semibold text-amber-700 hover:text-amber-900 underline underline-offset-2 transition-colors"
+        >
+          📋 윤리 핵심가이드 다시 보기
+        </button>
 
         <p className="text-center text-xs text-gray-400 mt-4">
           총 13장면 · 예상 소요 시간: 약 15분
